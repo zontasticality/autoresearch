@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""research — Unified CLI for the research toolchain.
+
+Usage:
+  research <question>                    Create session + launch claude
+  research list|ls                       List past sessions
+  research resume|r [query]              Resume a session
+  research open|o [query]                Print session path
+  research enrich [--add] <DOI>          CrossRef-enrich a source
+  research enrich --all                  Enrich all un-enriched entries
+  research pdf2html [--force] [dir]      Convert PDFs to HTML
+  research fragment <file> "<quote>"     Generate text fragment URL
+  research sources [sources.json]        Generate sources.md
+  research sync                          Git sync to GitHub
+"""
+
+import argparse
+import sys
+import os
+
+# Ensure lib/ is importable
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
+
+from lib import enrich, render, fragment, pdf2html, sync, session
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="research", description="Research toolchain CLI")
+    sub = parser.add_subparsers(dest="command")
+
+    # --- new ---
+    p_new = sub.add_parser("new", help="Start a new research session")
+    p_new.add_argument("question", nargs="+", help="Research question")
+
+    # --- list ---
+    sub.add_parser("list", aliases=["ls"], help="List past sessions")
+
+    # --- resume ---
+    p_resume = sub.add_parser("resume", aliases=["r"], help="Resume a session")
+    p_resume.add_argument("target", nargs="?", default="")
+
+    # --- open ---
+    p_open = sub.add_parser("open", aliases=["o"], help="Print session path")
+    p_open.add_argument("target", nargs="?", default="")
+
+    # --- enrich ---
+    p_enrich = sub.add_parser("enrich", help="CrossRef-enrich sources")
+    p_enrich.add_argument("--add", action="store_true", help="Create new entry")
+    p_enrich.add_argument("--all", action="store_true", dest="all", help="Enrich all un-enriched")
+    p_enrich.add_argument("doi", nargs="?", default=None)
+    p_enrich.add_argument("sources", nargs="?", default=None)
+
+    # --- pdf2html ---
+    p_pdf = sub.add_parser("pdf2html", help="Convert PDFs to HTML")
+    p_pdf.add_argument("--force", action="store_true")
+    p_pdf.add_argument("dir", nargs="?", default=None)
+
+    # --- fragment ---
+    p_frag = sub.add_parser("fragment", help="Generate text fragment URL")
+    p_frag.add_argument("file")
+    p_frag.add_argument("quote")
+    p_frag.add_argument("sources", nargs="?", default=None)
+
+    # --- sources ---
+    p_src = sub.add_parser("sources", help="Generate sources.md")
+    p_src.add_argument("sources", nargs="?", default=None)
+
+    # --- sync ---
+    p_sync = sub.add_parser("sync", help="Git sync to GitHub")
+    p_sync.add_argument("dir", nargs="?", default=None)
+
+    args = parser.parse_args()
+
+    if args.command is None:
+        parser.print_help()
+        sys.exit(1)
+    elif args.command == "new":
+        session.cmd_new(" ".join(args.question))
+    elif args.command in ("list", "ls"):
+        session.cmd_list()
+    elif args.command in ("resume", "r"):
+        session.cmd_resume(args.target)
+    elif args.command in ("open", "o"):
+        session.cmd_open(args.target)
+    elif args.command == "enrich":
+        if not args.all and not args.doi:
+            print("Error: DOI required (unless using --all)", file=sys.stderr)
+            sys.exit(1)
+        enrich.main(args)
+    elif args.command == "pdf2html":
+        pdf2html.main(args)
+    elif args.command == "fragment":
+        fragment.main(args)
+    elif args.command == "sources":
+        render.main(args)
+    elif args.command == "sync":
+        sync.main(args)
+
+
+if __name__ == "__main__":
+    main()

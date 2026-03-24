@@ -1,0 +1,26 @@
+# Session directories
+[0-9][0-9][0-9][0-9]-*/
+
+# Other investigation dirs
+wav2vec-investigation/
+
+# Downloaded sources (restorable via sources.json + annas-mcp)
+*.pdf
+*.epub
+*.mobi
+*.azw3
+*.djvu
+*.txt
+
+# User-specific config (contains secrets/identity)
+.mcp.json
+config.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Editor/OS
+.DS_Store
+*~
+*.swp

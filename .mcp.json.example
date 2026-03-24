@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "annas-mcp": {
+      "type": "stdio",
+      "command": "/absolute/path/to/Research/.bin/annas-mcp",
+      "args": [
+        "mcp"
+      ],
+      "env": {
+        "ANNAS_SECRET_KEY": "YOUR_SECRET_KEY_HERE",
+        "ANNAS_DOWNLOAD_PATH": "/absolute/path/to/Research"
+      }
+    }
+  }
+}

@@ -1,0 +1,3 @@
+[submodule ".bin/annas-mcp-src"]
+	path = .bin/annas-mcp-src
+	url = https://github.com/iosifache/annas-mcp.git
