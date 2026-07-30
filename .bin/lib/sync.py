@@ -58,9 +58,60 @@ def ensure_git_init(session_dir: str):
 
 
 def ensure_gitignore(session_dir: str):
+    """Ensure the managed ignore rules are present without discarding user edits.
+
+    Previously this truncated .gitignore on every sync, silently dropping any
+    hand-added rules (e.g. an exclusion for an oversized converted HTML file,
+    which would then be re-added and rejected by GitHub's 100MB limit).
+    """
     gitignore_path = os.path.join(session_dir, ".gitignore")
-    with open(gitignore_path, "w") as f:
-        f.write(GITIGNORE_CONTENT)
+
+    if not os.path.exists(gitignore_path):
+        with open(gitignore_path, "w") as f:
+            f.write(GITIGNORE_CONTENT)
+        return
+
+    with open(gitignore_path) as f:
+        existing = f.read()
+
+    existing_lines = {line.strip() for line in existing.splitlines()}
+    missing = [
+        line for line in GITIGNORE_CONTENT.splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+        and line.strip() not in existing_lines
+    ]
+    if not missing:
+        return
+
+    with open(gitignore_path, "a") as f:
+        if not existing.endswith("\n"):
+            f.write("\n")
+        f.write("\n# Added by `research sync`\n")
+        for line in missing:
+            f.write(line + "\n")
+
+
+def _staged_files_over_limit(session_dir: str, limit_mb: int = 100):
+    """Return [(path, size_mb)] for staged files GitHub would reject."""
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
+        cwd=session_dir, capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        return []
+
+    over = []
+    for rel in result.stdout.splitlines():
+        if not rel:
+            continue
+        full = os.path.join(session_dir, rel)
+        try:
+            mb = os.path.getsize(full) / (1024 * 1024)
+        except OSError:
+            continue
+        if mb > limit_mb:
+            over.append((rel, mb))
+    return over
 
 
 def ensure_remote(session_dir: str, name: str):
@@ -122,6 +173,24 @@ def main(args):
 
     # Commit and push
     run(["git", "add", "-A"], cwd=session_dir, check=True)
+
+    oversized = _staged_files_over_limit(session_dir)
+    if oversized:
+        print(
+            "\nError: staged file(s) exceed GitHub's 100MB limit; the push would be "
+            "rejected.\n",
+            file=sys.stderr,
+        )
+        for path, mb in oversized:
+            print(f"  {mb:.0f}MB  {path}", file=sys.stderr)
+        print(
+            "\nAdd the path to .gitignore (it will now be preserved across syncs), "
+            "then run `git rm --cached <path>` and sync again.\n"
+            "Large converted HTML is usually a scanned book; it stays usable locally "
+            "for `research fragment` even when not committed.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     result = subprocess.run(
         ["git", "diff", "--cached", "--quiet"],
