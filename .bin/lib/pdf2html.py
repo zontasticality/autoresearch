@@ -399,6 +399,45 @@ def ensure_gitignore(session_dir: str):
                 f.write(line + "\n")
 
 
+def _source_key(source: dict):
+    """Stable identity for a source across a re-read of sources.json.
+
+    Prefers `id`; falls back to the download filename so entries that predate
+    the id field (or were hand-written without one) still match.
+    """
+    if source.get("id") is not None:
+        return ("id", source["id"])
+    return ("file", (source.get("download") or {}).get("filename"))
+
+
+def _merge_html_filenames(sources_path: str, html_updates: dict):
+    """Write html_filename values into a FRESH read of sources.json.
+
+    Conversion can take many minutes, during which sources.json may have been
+    edited. Writing back the copy loaded at startup would silently revert those
+    edits, so re-read here and apply only the html_filename field.
+    """
+    if not html_updates:
+        return
+
+    data = S.load_sources(sources_path)
+    applied = 0
+    for source in data.get("sources", []):
+        key = _source_key(source)
+        if key in html_updates:
+            source["html_filename"] = html_updates[key]
+            applied += 1
+
+    S.save_sources(sources_path, data)
+
+    missing = len(html_updates) - applied
+    if missing:
+        print(
+            f"  Note: {missing} converted source(s) are no longer in sources.json; "
+            "their html_filename was not recorded."
+        )
+
+
 def main(args):
     force = args.force if hasattr(args, "force") else False
     session_dir = os.path.abspath(args.dir if hasattr(args, "dir") and args.dir else ".")
@@ -415,6 +454,12 @@ def main(args):
     sources_list = data.get("sources", [])
 
     os.makedirs(docs_dir, exist_ok=True)
+
+    # Conversions are slow, so sources.json is often edited (by hand, by
+    # `research enrich`, or by another process) while this runs. Collect the
+    # html_filename updates here and merge them into a fresh read at the end
+    # rather than writing back the stale copy loaded above.
+    html_updates: dict = {}
 
     converted_count = 0
     for source in sources_list:
@@ -437,6 +482,7 @@ def main(args):
             if os.path.getmtime(html_path) > os.path.getmtime(pdf_path):
                 print(f"  Skipping {filename} — HTML is newer (use --force to reconvert)")
                 source["html_filename"] = html_filename
+                html_updates[_source_key(source)] = html_filename
                 continue
 
         print(f"  Converting {filename}...")
@@ -467,10 +513,11 @@ def main(args):
             f.write(content)
 
         source["html_filename"] = html_filename
+        html_updates[_source_key(source)] = html_filename
         converted_count += 1
         print(f"  Done: {html_filename}")
 
-    S.save_sources(sources_path, data)
+    _merge_html_filenames(sources_path, html_updates)
 
     print("  Generating index.html...")
     generate_index(session, sources_list, docs_dir)

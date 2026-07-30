@@ -23,13 +23,15 @@ LIGATURES = {
 # PUA character class used by pdf2htmlEX for font-specific ligatures
 _PUA = "[\uE000-\uF8FF]"
 
-# ASCII ligature sequences and their regex alternatives (longest first)
+# ASCII ligature sequences and their regex alternatives (longest first).
+# pdf2htmlEX emits either PUA codepoints or Unicode presentation forms (U+FB0x)
+# depending on the embedded font, so both must be accepted at each position.
 _LIGATURE_ALTS = [
-    ("ffi", f"(?:ffi|f{_PUA}|{_PUA})"),
-    ("ffl", f"(?:ffl|f{_PUA}|{_PUA})"),
-    ("fi", f"(?:fi|{_PUA})"),
-    ("fl", f"(?:fl|{_PUA})"),
-    ("ff", f"(?:ff|{_PUA})"),
+    ("ffi", f"(?:ffi|fﬁ|ﬀi|ﬃ|f{_PUA}|{_PUA})"),
+    ("ffl", f"(?:ffl|fﬂ|ﬀl|ﬄ|f{_PUA}|{_PUA})"),
+    ("fi", f"(?:fi|ﬁ|{_PUA})"),
+    ("fl", f"(?:fl|ﬂ|{_PUA})"),
+    ("ff", f"(?:ff|ﬀ|{_PUA})"),
 ]
 
 
