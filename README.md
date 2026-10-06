@@ -8,7 +8,7 @@ Downloads from Anna's Archive land in `inbox/` and are moved into the topic fold
 
 ## Features
 
-- **Session management** — create, list, resume research sessions with `research <question>`
+- **Topic folders** — the agent creates `topics/<date>-<slug>/` per question; no launcher command
 - **Source tracking** — `sources.json` tracks every source with metadata, relevance assessments, and download hashes for reproducibility
 - **PDF-to-HTML conversion** — convert papers to scrollable HTML with metadata bars, hosted via GitHub Pages
 - **Text fragment URLs** — generate `#:~:text=` links to specific passages in converted papers
@@ -37,36 +37,22 @@ The setup script will:
 1. Prompt for your GitHub username, email, and Anna's Archive API key
 2. Create `config.json` and `.mcp.json`
 3. Offer to use the pre-built `annas-mcp` binary (via Git LFS) or build from source
-4. Symlink the `research` CLI to `~/.local/bin/research`
+4. Create `inbox/` and `topics/`
 
 ## Usage
 
+Open T3 Code (or Claude Code / Codex) in `~/Research` and ask your question. The agent follows [`AGENTS.md`](AGENTS.md): it creates the topic folder, finds and reads sources, writes `report.md`, and answers in the console with inline citations and a link to the report.
+
+Helper scripts the agent calls as needed (work from any directory):
+
 ```bash
-# Start a new research session (launches Claude Code)
-research "What is the effect of pathogens on host lifespan?"
-
-# List all sessions
-research list
-
-# Resume a previous session
-research resume
-
-# Other tools (run inside a session directory)
-research enrich --add 10.1038/s41586-020-2649-2   # add source by DOI
-research enrich --all                              # enrich all sources
-research pdf2html                                  # convert PDFs to HTML
-research fragment doc.html "quote text"            # generate text fragment URL
-research sources                                   # regenerate sources.md
-research sync                                      # commit and push to GitHub
+~/Research/.bin/tools enrich --add 10.1038/s41586-020-2649-2   # add source by DOI (CrossRef)
+~/Research/.bin/tools enrich --all                              # enrich all sources
+~/Research/.bin/tools sources                                   # regenerate sources.md
+~/Research/.bin/tools sync                                      # commit + push topic to a private GitHub repo
+~/Research/.bin/tools pdf2html                                  # legacy: PDFs to HTML
+~/Research/.bin/tools fragment doc.html "quote text"            # legacy: text fragment URL
 ```
-
-## How It Works
-
-1. `research <question>` creates a dated session directory with a `CLAUDE.md` (epistemic guidelines), empty `sources.json`, and launches Claude Code
-2. Claude searches for relevant sources using anna-mcp tools, downloads papers, and populates `sources.json`
-3. Research notes go into `notes.md`, synthesis into `summary.md`, open questions into `questions.md`
-4. `research pdf2html` converts downloaded PDFs to HTML for GitHub Pages viewing
-5. `research sync` pushes the session to GitHub (PDFs excluded — anyone can restore them via `sources.json` hashes)
 
 ## Configuration
 

@@ -20,7 +20,7 @@ Pages.)
 │       └── *.txt          ← text extractions (regenerable, gitignored)
 ├── inbox/                 ← Anna's Archive download target; never leave files here
 ├── .annas-ledger.tsv      ← Anna's download log (daily budget, see below)
-├── .bin/                  ← `research` CLI (optional helpers)
+├── .bin/tools             ← helper scripts the agent runs (no user CLI)
 ├── config.json, .mcp.json ← user config + secrets (gitignored)
 ```
 
@@ -190,21 +190,23 @@ restorable.
 
 - `download` is non-null only for Anna's downloads; that is what allows a
   restore. For open-access files, put the URL in `url` and set `download: null`.
-- `research enrich --add <DOI>` creates or fills an entry from CrossRef.
+- `~/Research/.bin/tools enrich --add <DOI> <topic>/sources.json` creates or fills an entry from CrossRef.
 - **To restore downloads**, call `mcp__annas-mcp__book_download(hash, filename
   without extension, format)` for each non-null `download`. This counts
   against the daily budget.
 
-## Optional tools (`research` CLI)
+## Helper scripts (`~/Research/.bin/tools`)
 
-Not part of the default flow; use them only when asked.
+There is no user-facing command. The user only makes requests in
+`~/Research`; you create folders and run these as needed. They take a
+`sources.json` path or topic directory argument and default to the current
+directory. Only `enrich` is routine; use the rest only when asked.
 
-- `research list | open <q> | resume <q>`: browse `topics/`.
-- `research enrich [--add] <DOI> | --all`: CrossRef metadata.
-- `research sources`: render `sources.md` from `sources.json`.
-- `research sync`: git commit and push the topic to a **private** GitHub repo.
-  Repos stay private because the full texts are copyrighted.
-- `research pdf2html` / `research fragment`: HTML plus text-fragment links for
+- `.bin/tools enrich [--add] <DOI> [sources.json] | --all`: CrossRef metadata.
+- `.bin/tools sources [sources.json]`: render `sources.md` from `sources.json`.
+- `.bin/tools sync [topic-dir]`: git commit and push the topic to a **private**
+  GitHub repo. Repos stay private because the full texts are copyrighted.
+- `.bin/tools pdf2html` / `.bin/tools fragment`: HTML plus text-fragment links for
   GitHub Pages. This is legacy; Pages needs a paid plan for private repos.
 
 ## Legacy topics

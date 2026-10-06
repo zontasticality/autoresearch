@@ -93,26 +93,10 @@ else
 fi
 echo
 
-# --- 5. Symlink research CLI ---
+# --- 5. Workspace dirs ---
 mkdir -p "$SCRIPT_DIR/inbox" "$SCRIPT_DIR/topics"
-mkdir -p ~/.local/bin
-LINK_TARGET="$SCRIPT_DIR/.bin/research"
-LINK_PATH="$HOME/.local/bin/research"
-if [ -L "$LINK_PATH" ] && [ "$(readlink "$LINK_PATH")" = "$LINK_TARGET" ]; then
-    echo "research CLI already linked."
-elif [ -e "$LINK_PATH" ]; then
-    echo "Warning: $LINK_PATH already exists (not a symlink to this repo)."
-    echo "  Remove it manually if you want to link to this installation."
-else
-    ln -s "$LINK_TARGET" "$LINK_PATH"
-    echo "Linked research CLI to $LINK_PATH"
-fi
 echo
-
 echo "=== Setup complete ==="
 echo
-echo "Usage:"
-echo "  research <question>     Create a new research session"
-echo "  research list           List all sessions"
-echo "  research resume         Resume a session"
-echo "  research --help         Show all commands"
+echo "Open an agent (T3 Code / Claude Code) in $SCRIPT_DIR and ask a research question."
+echo "Rules for the agent live in AGENTS.md."

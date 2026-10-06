@@ -1,17 +1,13 @@
-#!/usr/bin/env python3
-"""research — Unified CLI for the research toolchain.
+#!/usr/bin/env python
+"""Agent-side helper scripts for ~/Research topics (not a user-facing CLI).
 
-Usage:
-  research <question>                    Create session + launch claude
-  research list|ls                       List past sessions
-  research resume|r [query]              Resume a session
-  research open|o [query]                Print session path
-  research enrich [--add] <DOI>          CrossRef-enrich a source
-  research enrich --all                  Enrich all un-enriched entries
-  research pdf2html [--force] [dir]      Convert PDFs to HTML
-  research fragment <file> "<quote>"     Generate text fragment URL
-  research sources [sources.json]        Generate sources.md
-  research sync                          Git sync to GitHub
+Usage (run from ~/Research or a topic folder):
+  .bin/tools enrich [--add] <DOI> [sources.json]   CrossRef-enrich a source
+  .bin/tools enrich --all [sources.json]           Enrich all un-enriched entries
+  .bin/tools sources [sources.json]                Generate sources.md
+  .bin/tools sync [topic-dir]                      Git sync topic to a private GitHub repo
+  .bin/tools pdf2html [--force] [topic-dir]        Convert PDFs to HTML (legacy)
+  .bin/tools fragment <file> "<quote>"             Text fragment URL (legacy)
 """
 
 import argparse
@@ -21,27 +17,12 @@ import os
 # Ensure lib/ is importable
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
-from lib import enrich, render, fragment, pdf2html, sync, session
+from lib import enrich, render, fragment, pdf2html, sync
 
 
 def main():
-    parser = argparse.ArgumentParser(prog="research", description="Research toolchain CLI")
+    parser = argparse.ArgumentParser(prog="tools", description="Research topic helper scripts")
     sub = parser.add_subparsers(dest="command")
-
-    # --- new ---
-    p_new = sub.add_parser("new", help="Start a new research session")
-    p_new.add_argument("question", nargs="+", help="Research question")
-
-    # --- list ---
-    sub.add_parser("list", aliases=["ls"], help="List past sessions")
-
-    # --- resume ---
-    p_resume = sub.add_parser("resume", aliases=["r"], help="Resume a session")
-    p_resume.add_argument("target", nargs="?", default="")
-
-    # --- open ---
-    p_open = sub.add_parser("open", aliases=["o"], help="Print session path")
-    p_open.add_argument("target", nargs="?", default="")
 
     # --- enrich ---
     p_enrich = sub.add_parser("enrich", help="CrossRef-enrich sources")
@@ -74,14 +55,6 @@ def main():
     if args.command is None:
         parser.print_help()
         sys.exit(1)
-    elif args.command == "new":
-        session.cmd_new(" ".join(args.question))
-    elif args.command in ("list", "ls"):
-        session.cmd_list()
-    elif args.command in ("resume", "r"):
-        session.cmd_resume(args.target)
-    elif args.command in ("open", "o"):
-        session.cmd_open(args.target)
     elif args.command == "enrich":
         if not args.all and not args.doi:
             print("Error: DOI required (unless using --all)", file=sys.stderr)

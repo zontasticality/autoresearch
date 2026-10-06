@@ -86,7 +86,7 @@ def ensure_gitignore(session_dir: str):
     with open(gitignore_path, "a") as f:
         if not existing.endswith("\n"):
             f.write("\n")
-        f.write("\n# Added by `research sync`\n")
+        f.write("\n# Added by `.bin/tools sync`\n")
         for line in missing:
             f.write(line + "\n")
 
@@ -187,7 +187,7 @@ def main(args):
             "\nAdd the path to .gitignore (it will now be preserved across syncs), "
             "then run `git rm --cached <path>` and sync again.\n"
             "Large converted HTML is usually a scanned book; it stays usable locally "
-            "for `research fragment` even when not committed.",
+            "for `.bin/tools fragment` even when not committed.",
             file=sys.stderr,
         )
         sys.exit(1)

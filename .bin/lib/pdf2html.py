@@ -456,7 +456,7 @@ def main(args):
     os.makedirs(docs_dir, exist_ok=True)
 
     # Conversions are slow, so sources.json is often edited (by hand, by
-    # `research enrich`, or by another process) while this runs. Collect the
+    # `.bin/tools enrich`, or by another process) while this runs. Collect the
     # html_filename updates here and merge them into a fresh read at the end
     # rather than writing back the stale copy loaded above.
     html_updates: dict = {}
