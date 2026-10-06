@@ -1,26 +1,30 @@
-# Session directories
-[0-9][0-9][0-9][0-9]-*/
+# Allowlist: this repo holds only the research *harness*. Everything at the
+# root is ignored unless listed below, so topics/, inbox/, downloads, reports
+# and notes can never be committed by accident. Add new harness files here.
+/*
+!/.bin/
+!/.gitignore
+!/.gitattributes
+!/.gitmodules
+!/AGENTS.md
+!/CLAUDE.md
+!/README.md
+!/config.example.json
+!/.mcp.json.example
+!/setup.sh
 
-# Other investigation dirs
-wav2vec-investigation/
-
-# Downloaded sources (restorable via sources.json + annas-mcp)
+# Never commit sources, even inside .bin/
 *.pdf
 *.epub
 *.mobi
 *.azw3
 *.djvu
-*.txt
+*.htm
+*.html
 
-# User-specific config (contains secrets/identity)
-.mcp.json
-config.json
-
-# Python cache
+# Python cache / editor junk
 __pycache__/
 *.pyc
-
-# Editor/OS
 .DS_Store
 *~
 *.swp

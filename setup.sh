@@ -81,7 +81,7 @@ if [ ! -f .mcp.json ]; then
       ],
       "env": {
         "ANNAS_SECRET_KEY": "$annas_key",
-        "ANNAS_DOWNLOAD_PATH": "$SCRIPT_DIR"
+        "ANNAS_DOWNLOAD_PATH": "$SCRIPT_DIR/inbox"
       }
     }
   }
@@ -94,6 +94,7 @@ fi
 echo
 
 # --- 5. Symlink research CLI ---
+mkdir -p "$SCRIPT_DIR/inbox" "$SCRIPT_DIR/topics"
 mkdir -p ~/.local/bin
 LINK_TARGET="$SCRIPT_DIR/.bin/research"
 LINK_PATH="$HOME/.local/bin/research"

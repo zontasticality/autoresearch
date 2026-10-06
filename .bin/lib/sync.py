@@ -151,10 +151,10 @@ def main(args):
     session_dir = os.path.abspath(args.dir if hasattr(args, "dir") and args.dir else ".")
     name = os.path.basename(session_dir)
 
-    # Guard: must be a direct subdirectory of ~/Research
+    # Guard: must be a direct subdirectory of ~/Research/topics
     parent = os.path.dirname(session_dir)
-    if parent != str(S.RESEARCH_DIR):
-        print("Error: must be run from a direct subdirectory of ~/Research/", file=sys.stderr)
+    if parent != str(S.TOPICS_DIR):
+        print("Error: must be run from a direct subdirectory of ~/Research/topics/", file=sys.stderr)
         print(f"  Current dir: {session_dir}", file=sys.stderr)
         sys.exit(1)
 

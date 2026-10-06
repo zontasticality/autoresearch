@@ -8,7 +8,7 @@
       ],
       "env": {
         "ANNAS_SECRET_KEY": "YOUR_SECRET_KEY_HERE",
-        "ANNAS_DOWNLOAD_PATH": "/absolute/path/to/Research"
+        "ANNAS_DOWNLOAD_PATH": "/absolute/path/to/Research/inbox"
       }
     }
   }

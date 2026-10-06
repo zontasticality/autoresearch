@@ -2,7 +2,9 @@
 
 An AI-assisted research framework using [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and [Anna's Archive](https://annas-archive.org/) for structured literature research sessions.
 
-Each session produces structured notes, source tracking (`sources.json`), and optionally HTML paper views hosted on GitHub Pages — all driven by a Claude Code agent with epistemic guardrails.
+Open an agent (Claude Code, T3 Code, Codex…) in `~/Research` and ask a question. The agent makes `topics/YYYY-MM-DD-slug/`, researches there, writes `report.md`, and answers in the console with inline citations plus a link to the report. All agent rules live in [`AGENTS.md`](AGENTS.md) (`CLAUDE.md` imports it).
+
+Downloads from Anna's Archive land in `inbox/` and are moved into the topic folder; `.annas-ledger.tsv` tracks the 25/day download budget.
 
 ## Features
 

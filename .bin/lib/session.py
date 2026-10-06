@@ -3,7 +3,6 @@
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tty
@@ -23,7 +22,7 @@ def slugify(text: str) -> str:
 
 def session_dirs() -> list[str]:
     """List session directories sorted by name (date-prefixed = chronological)."""
-    research = str(S.RESEARCH_DIR)
+    research = str(S.TOPICS_DIR)
     if not os.path.isdir(research):
         return []
     dirs = []
@@ -59,7 +58,7 @@ def cmd_new(question: str):
     slug = slugify(question)
     today = date.today().isoformat()
     dir_name = f"{today}-{slug}"
-    session_dir = os.path.join(str(S.RESEARCH_DIR), dir_name)
+    session_dir = os.path.join(str(S.TOPICS_DIR), dir_name)
 
     if os.path.isdir(session_dir):
         from datetime import datetime
@@ -71,12 +70,7 @@ def cmd_new(question: str):
     with open(os.path.join(session_dir, ".question"), "w") as f:
         f.write(question + "\n")
 
-    # Write CLAUDE.md from template
-    template_path = os.path.join(str(S.RESEARCH_DIR), ".session-template.md")
-    if os.path.exists(template_path):
-        shutil.copy(template_path, os.path.join(session_dir, "CLAUDE.md"))
-    else:
-        print(f"Warning: template not found at {template_path}", file=sys.stderr)
+    # No per-topic CLAUDE.md: ~/Research/AGENTS.md (via CLAUDE.md) applies to every topic.
 
     # Write initial sources.json
     cfg = S.load_config()
@@ -99,7 +93,7 @@ def cmd_new(question: str):
     os.chdir(session_dir)
     os.execvp("claude", [
         "claude", "--dangerously-skip-permissions",
-        f"Research question: {question}\n\nBegin by searching for relevant sources using the anna-mcp tools. Scout what you find before diving deep.",
+        f"Research question: {question}\n\nFollow ~/Research/AGENTS.md. Discover with web search (and scry if connected); only spend Anna's Archive downloads on sources you will deep-read.",
     ])
 
 

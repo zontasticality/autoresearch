@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 RESEARCH_DIR = Path(__file__).resolve().parent.parent.parent
+TOPICS_DIR = RESEARCH_DIR / "topics"  # one folder per research topic
 
 
 def load_config() -> dict:
