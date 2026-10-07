@@ -37,7 +37,9 @@ Pages.)
    extract the text (see *Reading files*) and, for anything long, hand it to
    a sub-agent with: the question, the file path, and instructions to read
    the whole thing and return direct quotes **with page numbers**, the
-   authors' stated limitations, and its relevance.
+   authors' stated limitations, and its relevance. Quotes must be copied
+   exactly (curly quotes and dashes included) and come with the source URL
+   or file + page, so you can turn them into fragment links (see *Citations*).
 5. **Compute** where possible. If a public dataset or API answers the
    question directly (e.g. CDC data.cdc.gov Socrata, Europe PMC, OpenAlex),
    pull the numbers yourself and say so (`[MEASURED, my pull]`), recording
@@ -54,7 +56,11 @@ Pages.)
 _YYYY-MM-DD · status: quick pass | in progress | thorough_
 
 ## Bottom line
-2-5 sentences, hedged to the evidence.
+Short bullets, hedged to the evidence. Often the only part anyone reads, so
+every claim links to its evidence. Put the link on the words that already
+name the thing ("Pinker's RAND citation", "the 2019 tweet", "Scott's own
+blog"), with a fragment link that lands on the passage. Don't add quotes
+just to carry links; the prose should read the same with the links removed.
 
 ## Findings
 Sections by sub-question. Every factual claim cited inline.
@@ -64,21 +70,60 @@ What else could explain the result; measurement problems; selection effects.
 
 ## Gaps
 What I looked for and couldn't find; what would change the conclusion.
-
-## Sources
-Numbered list matching sources.json ids (title, authors, year, DOI/URL, local file).
 ```
+
+No source list at the end: every claim links to its evidence inline, and
+`sources.json` is the record of what was used.
 
 ## Citations (console and report)
 
-Cite **inline, at the claim**, never only in an end list.
+Cite **inline, at the claim**. Don't add an end-of-report source list.
 
 - Format: `claim [TAG][V] ([Author Year, p. N](link))` or a direct quote:
   `"exact words" ([Author Year, p. N](link))`.
-- **Link targets:** a URL for web sources; for local files, a path
-  (`topics/<slug>/File.pdf#page=N` in the report, absolute path in the
-  console). For quotes in a web page, a text-fragment URL
-  (`url#:~:text=exact%20words`) is a cheap way to make the claim checkable.
+- **Link what you reference; don't quote just to cite.** In the Bottom line
+  and the console answer, put the link on the words that already name the
+  thing ("his 2019 tweet", "the RAND report's conclusion"). Use a direct quote
+  only when the exact wording is itself the point.
+- **Every link should land on the passage, not just the page:**
+  - **Web pages:** a text-fragment URL on the original page:
+    `url#:~:text=exact%20words` for short quotes,
+    `url#:~:text=first%20few%20words,last%20few%20words` for long ones.
+    - Build it from the page's exact text (fetch it with `curl`; keep its
+      curly quotes and dashes).
+    - Percent-encode spaces, `-`, `,` and `&`.
+    - Check that the start term's *first* occurrence on the page is the
+      passage you mean.
+    - Keep each term inside one paragraph.
+  - **Blocked or paywalled originals** (NYT, WSJ, most newspapers): link the
+    original *and* a snapshot that actually contains the text, with the
+    fragment on the snapshot. Fetch the snapshot and confirm the quote is in
+    it.
+    - Wayback: check with `https://archive.org/wayback/available?url=<url>`.
+    - archive.today:
+      `curl -s -o /dev/null -w '%{redirect_url}' "https://archive.is/newest/<url>"`
+      (archive.ph doesn't resolve from here). It often has full text when
+      Wayback only has the block page. It can't be submitted to by script
+      (captcha).
+    - To request a Wayback capture:
+      `curl -s -X POST --data-urlencode "url=<url>" --data capture_all=on https://web.archive.org/save/`
+      then poll `https://web.archive.org/save/status/<spn2-job-id>` (a plain
+      GET to `/save/<url>` fails).
+    - Sites that block crawlers (NYT, The Australian) produce a capture of
+      the 403 page, so check `http_status` in the status reply.
+    - If no snapshot has the text, link the original, say so, and keep the
+      full text you did read in the topic folder.
+  - **PDFs:** the original URL with `#page=N`. PDF viewers ignore text
+    fragments. Where the exact wording matters, also convert the PDF locally
+    to `docs/<file>.html` (see *Helper scripts*) and link
+    `docs/<file>.html#:~:text=…`.
+  - **Tweets:** the status URL (`https://x.com/<handle>/status/<id>`). X
+    doesn't support text fragments, and the tweet is the quote.
+  - **Google Books snippets:** a search-within URL,
+    `https://books.google.com/books?id=<id>&q=%22<phrase>%22`, plus the page
+    number.
+  - **Local files:** in the report, paths relative to `report.md` (these also
+    work on GitHub); in the console, absolute paths.
 - **Claim type tags:**
   - `[MEASURED]`: the source reports a direct measurement
   - `[INFERRED]`: the source infers it from data plus a model or theory
@@ -200,14 +245,22 @@ restorable.
 There is no user-facing command. The user only makes requests in
 `~/Research`; you create folders and run these as needed. They take a
 `sources.json` path or topic directory argument and default to the current
-directory. Only `enrich` is routine; use the rest only when asked.
+directory. `enrich`, `pdf2html` and `fragment` are routine. Use `sync` only
+when asked.
 
 - `.bin/tools enrich [--add] <DOI> [sources.json] | --all`: CrossRef metadata.
 - `.bin/tools sources [sources.json]`: render `sources.md` from `sources.json`.
 - `.bin/tools sync [topic-dir]`: git commit and push the topic to a **private**
   GitHub repo. Repos stay private because the full texts are copyrighted.
-- `.bin/tools pdf2html` / `.bin/tools fragment`: HTML plus text-fragment links for
-  GitHub Pages. This is legacy; Pages needs a paid plan for private repos.
+- `.bin/tools pdf2html [topic-dir]`: converts PDFs to `docs/<stem>.html` with
+  pdf2htmlEX (podman). It only converts sources whose `download.format` is
+  `pdf`. For open-access PDFs, run the same command by hand:
+  `podman run --rm -v <topic>:/pdf:ro -v <topic>/docs:/out bwits/pdf2htmlex pdf2htmlEX --zoom 1.3 --dest-dir /out /pdf/<file>.pdf`
+- `.bin/tools fragment <docs/file.html> "<quote>"`: prints a text-fragment
+  link into that HTML. It leaves `-` unencoded, so replace `-` with `%2D`
+  inside the `text=` part.
+- Publishing `docs/` through GitHub Pages is legacy: Pages needs a paid plan
+  for private repos. Use the HTML locally.
 
 ## Legacy topics
 
