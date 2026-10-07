@@ -1,271 +1,226 @@
 # Research Harness
 
 `~/Research` is a workspace for AI-assisted research. Each question gets a
-folder; the agent researches inside it, writes the full result to a markdown
-file there, and answers in the console with inline citations plus a link to
-that file. (The user reads results in the console via T3 Code, not on GitHub
-Pages.)
+folder under `topics/`. The agent researches there, writes `report.md`, and
+answers in the console (the user reads in T3 Code) with a condensed version
+that links to it.
 
 ## Layout
 
 ```
 ~/Research/
-├── AGENTS.md              ← this file (CLAUDE.md just imports it)
-├── topics/                ← one folder per research question
-│   └── YYYY-MM-DD-short-slug/
-│       ├── report.md      ← the full write-up (what the console answer links to)
-│       ├── notes.md       ← optional: working notes, deep-read extracts, scry SQL
-│       ├── sources.json   ← every source used (schema below)
-│       ├── *.pdf / *.epub ← full texts for this topic
-│       └── *.txt          ← text extractions (regenerable, gitignored)
-├── inbox/                 ← Anna's Archive download target; never leave files here
-├── .annas-ledger.tsv      ← Anna's download log (daily budget, see below)
-├── .bin/tools             ← helper scripts the agent runs (no user CLI)
-├── config.json, .mcp.json ← user config + secrets (gitignored)
+├── AGENTS.md                ← this file (CLAUDE.md imports it)
+├── topics/YYYY-MM-DD-slug/
+│   ├── report.md            ← the write-up the console answer links to
+│   ├── notes.md             ← working notes, deep-read extracts, SQL/API queries
+│   ├── sources.json         ← record of every source used
+│   ├── docs/                ← local HTML copies of PDFs, for fragment links
+│   └── *.pdf *.epub *.txt   ← full texts and extractions (gitignored)
+├── inbox/                   ← Anna's Archive downloads land here; move them out
+├── .annas-ledger.tsv        ← Anna's download log
+├── .bin/tools               ← helper scripts (agent-only, see below)
+└── config.json, .mcp.json   ← config and secrets (gitignored)
 ```
+
+Folders from before 2026-10 have their own `CLAUDE.md`, `summary.md`, and so
+on. Keep those files when working in one, but follow this file for output.
 
 ## Workflow
 
-1. **Make the folder first.** `topics/$(date +%F)-<3-5-word-slug>/`. If the
-   question continues an existing topic (`ls topics/`), work in that folder
-   instead and add to its `report.md`. Short questions get a folder too.
-2. **Clarify** only if the question is truly ambiguous; otherwise state your
+1. **Make the folder first:** `topics/$(date +%F)-<3-5-word-slug>/`, even
+   for short questions. If the question continues a topic (`ls topics/`),
+   extend that topic's `report.md` instead.
+2. **Clarify** only if the question is truly ambiguous. Otherwise state your
    interpretation in the report and proceed.
-3. **Discover** sources (see *Source ladder*). Log each source you rely on
-   in `sources.json` as you go.
-4. **Read.** Read abstracts/TOCs yourself. For full texts you need to quote,
-   extract the text (see *Reading files*) and, for anything long, hand it to
-   a sub-agent with: the question, the file path, and instructions to read
-   the whole thing and return direct quotes **with page numbers**, the
-   authors' stated limitations, and its relevance. Quotes must be copied
-   exactly (curly quotes and dashes included) and come with the source URL
-   or file + page, so you can turn them into fragment links (see *Citations*).
-5. **Compute** where possible. If a public dataset or API answers the
-   question directly (e.g. CDC data.cdc.gov Socrata, Europe PMC, OpenAlex),
-   pull the numbers yourself and say so (`[MEASURED, my pull]`), recording
-   the query in `notes.md`.
-6. **Write `report.md`** (structure below), then **answer in the console**:
-   a condensed version with the same inline citations, ending with
-   `Full report: [report.md](<absolute path to topics/<slug>/report.md>)`
-   (expand `~` to the real absolute path so it's clickable in T3 Code).
+3. **Find sources** (see *Source ladder*). Add each one you rely on to
+   `sources.json` as you go.
+4. **Read.** Read abstracts and TOCs yourself.
+   - Hand long full texts to a sub-agent with the question and the file path.
+   - It reads the whole thing and returns exact quotes (curly quotes and
+     dashes kept) with page numbers and the source URL, plus the authors'
+     stated limitations and the source's relevance.
+5. **Compute** where a public dataset or API answers directly (OpenAlex,
+   Europe PMC, data.cdc.gov, …). Pull the numbers yourself, tag them
+   `[MEASURED, my pull]`, and record the query in `notes.md`.
+6. **Write `report.md`**, run `.bin/tools link --check report.md`, then answer
+   in the console with a condensed version ending
+   `Full report: [report.md](<absolute path>)`.
 
-### `report.md` structure
+### `report.md`
 
 ```markdown
 # <Question>
 _YYYY-MM-DD · status: quick pass | in progress | thorough_
 
 ## Bottom line
-Short bullets, hedged to the evidence. Often the only part anyone reads, so
-every claim links to its evidence. Put the link on the words that already
-name the thing ("Pinker's RAND citation", "the 2019 tweet", "Scott's own
-blog"), with a fragment link that lands on the passage. Don't add quotes
-just to carry links; the prose should read the same with the links removed.
-
 ## Findings
-Sections by sub-question. Every factual claim cited inline.
-
 ## Confounders & caveats
-What else could explain the result; measurement problems; selection effects.
-
 ## Gaps
-What I looked for and couldn't find; what would change the conclusion.
 ```
 
-No source list at the end: every claim links to its evidence inline, and
-`sources.json` is the record of what was used.
+- **Bottom line:** short bullets, hedged to the evidence. This is often the
+  only part anyone reads, so every claim links to its evidence. No tags here;
+  the links carry it.
+- **Findings:** sections by sub-question. Every factual claim is tagged and
+  linked.
+- **Confounders & caveats:** what else could explain the result; measurement
+  problems; selection effects.
+- **Gaps:** what you looked for and couldn't find; what would change the
+  conclusion.
+- No source list at the end. `sources.json` is the record.
 
-## Citations (console and report)
+## Citations
 
-Cite **inline, at the claim**. Don't add an end-of-report source list.
+Cite inline, at the claim, in both the report and the console answer.
 
-- Format: `claim [TAG][V] ([Author Year, p. N](link))` or a direct quote:
-  `"exact words" ([Author Year, p. N](link))`.
-- **Link what you reference; don't quote just to cite.** In the Bottom line
-  and the console answer, put the link on the words that already name the
-  thing ("his 2019 tweet", "the RAND report's conclusion"). Use a direct quote
-  only when the exact wording is itself the point.
-- **Every link should land on the passage, not just the page:**
-  - **Web pages:** a text-fragment URL on the original page:
-    `url#:~:text=exact%20words` for short quotes,
-    `url#:~:text=first%20few%20words,last%20few%20words` for long ones.
-    - Build it from the page's exact text (fetch it with `curl`; keep its
-      curly quotes and dashes).
-    - Percent-encode spaces, `-`, `,` and `&`.
-    - Check that the start term's *first* occurrence on the page is the
-      passage you mean.
-    - Keep each term inside one paragraph.
-  - **Blocked or paywalled originals** (NYT, WSJ, most newspapers): link the
-    original *and* a snapshot that actually contains the text, with the
-    fragment on the snapshot. Fetch the snapshot and confirm the quote is in
-    it.
-    - Wayback: check with `https://archive.org/wayback/available?url=<url>`.
-    - archive.today:
-      `curl -s -o /dev/null -w '%{redirect_url}' "https://archive.is/newest/<url>"`
-      (archive.ph doesn't resolve from here). It often has full text when
-      Wayback only has the block page. It can't be submitted to by script
-      (captcha).
-    - To request a Wayback capture:
-      `curl -s -X POST --data-urlencode "url=<url>" --data capture_all=on https://web.archive.org/save/`
-      then poll `https://web.archive.org/save/status/<spn2-job-id>` (a plain
-      GET to `/save/<url>` fails).
-    - Sites that block crawlers (NYT, The Australian) produce a capture of
-      the 403 page, so check `http_status` in the status reply.
-    - If no snapshot has the text, link the original, say so, and keep the
-      full text you did read in the topic folder.
-  - **PDFs:** the original URL with `#page=N`. PDF viewers ignore text
-    fragments. Where the exact wording matters, also convert the PDF locally
-    to `docs/<file>.html` (see *Helper scripts*) and link
-    `docs/<file>.html#:~:text=…`.
-  - **Tweets:** the status URL (`https://x.com/<handle>/status/<id>`). X
-    doesn't support text fragments, and the tweet is the quote.
-  - **Google Books snippets:** a search-within URL,
+- **Link the words that name the thing** ("Pinker's RAND citation", "the
+  2019 tweet"). The prose should read the same with the links removed.
+  - Quote directly only when the exact wording is itself the point:
+    `"exact words" ([Author Year, p. N](link))`.
+- **Links land on the passage, not just the page.** Make them with
+  `.bin/tools link <url> "<passage>"`.
+  - It fetches the page, checks the passage is there, and prints a
+    text-fragment URL.
+  - If the original is blocked or paywalled, it falls back to a Wayback or
+    archive.today copy that contains the passage. Link the original as well.
+  - If no copy has the text, run `.bin/tools archive <url> --submit`, link
+    the original, and say where you read the text.
+- **By source type:**
+  - **PDFs:** the original URL with `#page=N`. Where the wording matters,
+    also make a local copy with `.bin/tools pdf2html --file <pdf>` and link
+    it with `.bin/tools link docs/<file>.html "<passage>"`.
+  - **Tweets:** the status URL. X doesn't support text fragments.
+  - **Google Books snippets:**
     `https://books.google.com/books?id=<id>&q=%22<phrase>%22`, plus the page
     number.
-  - **Local files:** in the report, paths relative to `report.md` (these also
-    work on GitHub); in the console, absolute paths.
-- **Claim type tags:**
-  - `[MEASURED]`: the source reports a direct measurement
-  - `[INFERRED]`: the source infers it from data plus a model or theory
-  - `[CLAIMED]`: asserted without evidence in that source
-  - `[MY SYNTHESIS]`: you are connecting dots; also use it for your own arithmetic
-- **Provenance tags:**
-  - `[V]`: verbatim from text you actually read (full text, abstract, raw data)
-  - `[2nd]`: from a search snippet, a WebFetch summary, or a secondary report.
-    WebFetch runs pages through a small summarizer model, so its "quotes"
-    are not verbatim. For a real quote, `curl` the page/API or read the file.
-- No page numbers available (HTML, abstracts)? Say so once, don't invent them.
+  - **Local files:** paths relative to `report.md` in the report; absolute
+    paths in the console.
+- **Tags** (in Findings):
+  - **Claim:**
+    - `[MEASURED]`: the source reports a direct measurement.
+    - `[INFERRED]`: inferred from data plus a model or theory.
+    - `[CLAIMED]`: asserted without evidence in that source.
+    - `[MY SYNTHESIS]`: your own dot-connecting or arithmetic.
+  - **Provenance:**
+    - `[V]`: verbatim from text you actually read (full text, abstract, raw
+      data).
+    - `[2nd]`: from a search snippet, a WebFetch summary (a summarizer, so
+      not verbatim) or a secondary report.
+- No page numbers (HTML, abstracts)? Say so once; don't invent them.
 
 ## Epistemic standards
 
 Every claim has a chain: reality → measurement → authors' interpretation →
-selection effects (why *this* paper reached you) → your reading → your
+selection effects (why *this* source reached you) → your reading → your
 summary. Be paranoid about each link.
 
-- "The authors found X", not "X is true". "Three papers report X" only
-  counts as convergence if they don't share data, methods or citation chains.
+- Write "the authors found X", not "X is true".
+- "Three papers report X" only counts as convergence if they don't share
+  data, methods or citation chains.
 - Hunt for **confounders** and **base rates**: compare any count to its
   denominator and to the background rate before calling it an effect.
 - Report conflicts between sources with both sides cited; don't silently pick.
-- Say what you couldn't find. Absence of evidence ≠ evidence of absence.
+- Say what you couldn't find. Absence of evidence isn't evidence of absence.
 - Tell the user when you skip a source or are unsure about a finding.
 
 ## Source ladder (cheapest first)
 
-The Anna's Archive key allows **25 downloads per day**. Spend them only on
-full texts you will deep-read and can't get any other way.
-
 1. **Already on disk:** `find ~/Research/topics -iname '*<keyword>*'`. Reuse
-   across topics with a hard link (`ln`, not `cp`; symlinks break podman
-   tools), and add the entry to this topic's `sources.json`.
-2. **Discovery (free):** web search; **scry** (below) for forums, arXiv,
-   LessWrong and prediction markets; OpenAlex
-   (`https://api.openalex.org/works?search=...`, or
-   `/works/doi:<DOI>` for abstract, citation count, references and
-   `best_oa_location`) to follow citation chains.
-3. **Open-access full text (free):** for papers, try:
-   - arXiv (`/pdf/<id>`)
-   - Europe PMC: `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:"<doi>"&resultType=core&format=json`
-     gives the abstract, `pmcid` and `isOpenAccess`; then `/rest/<PMCID>/fullTextXML`
-     for the full text. This works when publisher sites return 403.
-   - Unpaywall: `https://api.unpaywall.org/v2/<doi>?email=<contact_email from config.json>`
-   - NBER, SSRN, author pages
-   Download with `curl -L -A "Mozilla/5.0" -o topics/<slug>/<Name - Author Year>.pdf`
-   and check it with `file`.
-4. **Anna's Archive (budgeted):** only for paywalled papers and books.
-   - Before downloading, count today's use:
-     `grep -c "^$(date +%F)" ~/Research/.annas-ledger.tsv`. Stop at 25 and tell the user.
-   - After *every* attempt, successful or not, append
+   a file with a hard link (`ln`); symlinks break the podman tools.
+2. **Discovery (free):**
+   - Web search.
+   - scry (below).
+   - OpenAlex: `https://api.openalex.org/works?search=…`, or
+     `/works/doi:<DOI>` for the abstract, citations, references and
+     `best_oa_location`.
+3. **Open-access full text (free):**
+   - arXiv (`/pdf/<id>`).
+   - Europe PMC:
+     `https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=DOI:"<doi>"&resultType=core&format=json`
+     gives the `pmcid`, then `/rest/<PMCID>/fullTextXML`. This works when
+     publishers return 403.
+   - Unpaywall: `https://api.unpaywall.org/v2/<doi>?email=<contact_email>`,
+     with `contact_email` from `config.json`.
+   - NBER, SSRN, author pages.
+   - Download with `curl -L -A "Mozilla/5.0" -o <topic>/<Name - Author Year>.pdf`
+     and check the result with `file`.
+4. **Anna's Archive:** 25 downloads a day, for paywalled papers and books you
+   will deep-read.
+   - Count today's use first:
+     `grep -c "^$(date +%F)" ~/Research/.annas-ledger.tsv`. At 25, stop and
+     tell the user.
+   - After every attempt, append
      `date<TAB>book|article<TAB>md5-or-doi<TAB>filename<TAB>ok|failed`.
-   - Prefer EPUB over PDF for books (cleaner text extraction).
-   - Downloads land in `inbox/`. Move them into the topic folder immediately
-     and add a `sources.json` entry with `download.hash`.
-   - `article_download` can fall back to SciDB and save an HTML landing page
-     (`.htm`, about 170 KB) instead of a paper. Check with `file`; if it's
-     HTML, delete it and log the attempt as `failed`.
-   - If the anna-mcp tools error, say so and fall back to steps 2–3; don't retry in a loop.
+   - Prefer EPUB for books. Move downloads out of `inbox/` immediately and
+     record `download.hash`.
+   - `article_download` sometimes saves a SciDB landing page (`.htm`, about
+     170 KB) instead of the paper. Check with `file`; if so, delete it and
+     log `failed`.
+   - If the tools error, say so and fall back to steps 2–3. Don't retry in a
+     loop.
 
-### scry (`mcp.scry.io`)
-
-SQL/Datalog over about 10^11 rows of Reddit, Hacker News, LessWrong, arXiv,
-Stack Exchange, Wikipedia and prediction markets. Costs fractions of a cent
-to a few cents per query. Use it for:
-- discourse questions: who argues X, what are the positions on LessWrong or
-  HN, first-person reports on Reddit
-- counting or trending mentions over time
-- sweeping arXiv for a concept across many papers
-- market-implied probabilities
-
-It does **not** replace journals or official statistics. Treat forum
-content as `[CLAIMED]` anecdote. Call `schema` before writing SQL, always
-use a literal `LIMIT`, record the SQL in `notes.md`, and cite rows by their
-URI. It needs a one-time OAuth: if its tools are missing, tell the user to
-run `/mcp` in an interactive Claude Code session.
+**scry** (`mcp.scry.io`; follow its own guide) is SQL over Twitter/X, Reddit,
+HN, LessWrong, arXiv, Wikipedia, prediction markets and more.
+- Use it for tweets, discourse, mention trends and market odds.
+- It doesn't replace journals or official statistics.
+- Forum posts are `[CLAIMED]`.
+- Record the SQL in `notes.md`.
 
 ## Reading files
 
-- PDF: `pdftotext -layout F.pdf F.txt` puts a form feed between pages, so page N is
-  `awk -v RS='\f' 'NR==N' F.txt`, and pages matching a pattern are
-  `awk -v RS='\f' '/pattern/{print "p." NR}' F.txt`.
-  These are PDF page indices. Check them against the printed page numbers
-  before citing a journal page.
-- EPUB: `pandoc F.epub -t plain -o F.txt` (no pages, so cite chapter/section).
-- Scanned PDF with no text layer: say so. Look for another copy before
-  spending an Anna's download on it.
+- **PDF:** `pdftotext -layout F.pdf F.txt` puts a form feed between pages.
+  - Page N is `awk -v RS='\f' 'NR==N' F.txt`.
+  - Find a phrase's page with `awk -v RS='\f' '/pattern/{print "p." NR}' F.txt`.
+  - These are PDF page indices; check them against the printed page numbers
+    before citing a journal page.
+- **EPUB:** `pandoc F.epub -t plain -o F.txt`. There are no pages, so cite
+  chapter or section.
+- **Scanned PDF with no text layer:** say so, and look for another copy
+  before spending an Anna's download on it.
 
 ## sources.json
 
-One per topic. It's the record of what was used, and it makes downloads
-restorable.
+One per topic. It's the record of what was used, and it makes Anna's
+downloads restorable. Create entries with
+`.bin/tools enrich --add <DOI> <topic>/sources.json` when there's a DOI.
 
 ```json
 {
-  "session": {"title": "...", "date": "YYYY-MM-DD", "question": "..."},
+  "session": {"title": "…", "date": "YYYY-MM-DD", "question": "…"},
   "sources": [{
-    "id": 1, "title": "...", "authors": ["..."], "year": 2024,
-    "doi": "10.x/...", "url": "https://...", "journal": "...",
-    "type": "journal-article", "found_via": "how it was discovered",
-    "download": {"hash": "<md5>", "format": "pdf", "filename": "Name - Author Year.pdf"},
-    "status": "scouted-only | not-yet-read | read-partial | read-full | downloaded",
-    "relevance_level": "LOW | MODERATE | MODERATE-HIGH | HIGH | VERY HIGH",
-    "relevance": "one line"
+    "id": 1, "title": "…", "authors": ["…"], "year": 2024, "doi": "…",
+    "url": "original URL", "archive_url": "snapshot used if the original is blocked",
+    "journal": "…", "type": "journal-article", "found_via": "…",
+    "download": {"hash": "<md5>", "format": "pdf", "filename": "…"},
+    "local_file": "media/X.pdf", "html_filename": "X.html",
+    "status": "read-full", "relevance_level": "HIGH", "relevance": "one line"
   }]
 }
 ```
 
-- `download` is non-null only for Anna's downloads; that is what allows a
-  restore. For open-access files, put the URL in `url` and set `download: null`.
-- `~/Research/.bin/tools enrich --add <DOI> <topic>/sources.json` creates or fills an entry from CrossRef.
-- **To restore downloads**, call `mcp__annas-mcp__book_download(hash, filename
-  without extension, format)` for each non-null `download`. This counts
-  against the daily budget.
+- `download` is only for Anna's downloads (null otherwise).
+- Restore a download with
+  `mcp__annas-mcp__book_download(hash, filename without extension, format)`.
+  This counts against the daily budget.
+- `html_filename` is set by `pdf2html`.
 
-## Helper scripts (`~/Research/.bin/tools`)
+## Helper scripts (`.bin/tools`)
 
-There is no user-facing command. The user only makes requests in
-`~/Research`; you create folders and run these as needed. They take a
-`sources.json` path or topic directory argument and default to the current
-directory. `enrich`, `pdf2html` and `fragment` are routine. Use `sync` only
-when asked.
+Agent-only. Run them from `~/Research` or a topic folder.
 
-- `.bin/tools enrich [--add] <DOI> [sources.json] | --all`: CrossRef metadata.
-- `.bin/tools sources [sources.json]`: render `sources.md` from `sources.json`.
-- `.bin/tools sync [topic-dir]`: git commit and push the topic to a **private**
-  GitHub repo. Repos stay private because the full texts are copyrighted.
-- `.bin/tools pdf2html [topic-dir]`: converts PDFs to `docs/<stem>.html` with
-  pdf2htmlEX (podman). It only converts sources whose `download.format` is
-  `pdf`. For open-access PDFs, run the same command by hand:
-  `podman run --rm -v <topic>:/pdf:ro -v <topic>/docs:/out bwits/pdf2htmlex pdf2htmlEX --zoom 1.3 --dest-dir /out /pdf/<file>.pdf`
-- `.bin/tools fragment <docs/file.html> "<quote>"`: prints a text-fragment
-  link into that HTML. It leaves `-` unencoded, so replace `-` with `%2D`
-  inside the `text=` part.
-- Publishing `docs/` through GitHub Pages is legacy: Pages needs a paid plan
-  for private repos. Use the HTML locally.
-
-## Legacy topics
-
-Folders created before 2026-10 contain their own `CLAUDE.md` (the old
-session template) and `notes.md` / `summary.md` / `questions.md`. When
-working in one, keep its existing files, but this AGENTS.md wins on output
-format: inline citations in the console plus a link to the main markdown
-file.
+- `link <url|docs/file.html> "<passage>"`: prints a verified text-fragment
+  link, with archive fallback.
+- `link --check <file.md>`: re-verifies every fragment link in the file.
+- `archive <url> [--submit]`: finds Wayback and archive.today copies, or
+  requests a Wayback capture.
+- `pdf2html --file <pdf>`: converts any PDF inside a topic to
+  `docs/<stem>.html`. Plain `pdf2html [topic-dir]` converts the Anna's PDFs
+  listed in `sources.json`.
+- `fragment <docs/file.html> "<quote>"`: the low-level matcher for pdf2html
+  output. `link` uses it.
+- `enrich [--add] <DOI> [sources.json] | --all`: fetches CrossRef metadata.
+- `sources [sources.json]`: renders `sources.md`.
+- `sync [topic-dir]`: commits and pushes the topic to a **private** GitHub
+  repo, because the full texts are copyrighted. Only when asked.
+  - Publishing `docs/` through GitHub Pages is legacy; it needs a paid plan
+    for private repos.

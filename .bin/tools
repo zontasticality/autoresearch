@@ -5,9 +5,13 @@ Usage (run from ~/Research or a topic folder):
   .bin/tools enrich [--add] <DOI> [sources.json]   CrossRef-enrich a source
   .bin/tools enrich --all [sources.json]           Enrich all un-enriched entries
   .bin/tools sources [sources.json]                Generate sources.md
+  .bin/tools link <url|docs/file.html> "<passage>" Verified text-fragment link (archive fallback)
+  .bin/tools link --check <file.md>                Re-verify every fragment link in a file
+  .bin/tools archive <url> [--submit]              Find or request a Wayback/archive.today copy
+  .bin/tools pdf2html [--force] [topic-dir]        Convert Anna's PDFs (sources.json) to docs/*.html
+  .bin/tools pdf2html --file <pdf> [--file ...]    Convert specific PDFs inside a topic
+  .bin/tools fragment <docs/file.html> "<quote>"   Text-fragment link into a pdf2htmlEX file
   .bin/tools sync [topic-dir]                      Git sync topic to a private GitHub repo
-  .bin/tools pdf2html [--force] [topic-dir]        Convert PDFs to HTML (legacy)
-  .bin/tools fragment <file> "<quote>"             Text fragment URL (legacy)
 """
 
 import argparse
@@ -17,7 +21,7 @@ import os
 # Ensure lib/ is importable
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "lib"))
 
-from lib import enrich, render, fragment, pdf2html, sync
+from lib import enrich, render, fragment, pdf2html, sync, link
 
 
 def main():
@@ -34,6 +38,8 @@ def main():
     # --- pdf2html ---
     p_pdf = sub.add_parser("pdf2html", help="Convert PDFs to HTML")
     p_pdf.add_argument("--force", action="store_true")
+    p_pdf.add_argument("--file", action="append", dest="files", default=[],
+                       help="convert this PDF (inside a topic folder); repeatable")
     p_pdf.add_argument("dir", nargs="?", default=None)
 
     # --- fragment ---
@@ -41,6 +47,22 @@ def main():
     p_frag.add_argument("file")
     p_frag.add_argument("quote")
     p_frag.add_argument("sources", nargs="?", default=None)
+
+    # --- link ---
+    p_link = sub.add_parser("link", help="Verified text-fragment link")
+    p_link.add_argument("target", nargs="?", default=None, help="URL or local HTML file")
+    p_link.add_argument("passage", nargs="?", default=None)
+    p_link.add_argument("--check", metavar="FILE.md", default=None,
+                        help="re-verify every fragment link in a markdown file")
+    p_link.add_argument("--no-archive", action="store_true",
+                        help="don't fall back to archived copies")
+
+    # --- archive ---
+    p_arch = sub.add_parser("archive", help="Find or request an archived copy")
+    p_arch.add_argument("url")
+    p_arch.add_argument("--submit", action="store_true", help="request a Wayback capture if none exists")
+    p_arch.add_argument("--force", action="store_true", help="capture even if a snapshot exists")
+    p_arch.add_argument("--wait", type=int, default=120, help="seconds to poll the capture job")
 
     # --- sources ---
     p_src = sub.add_parser("sources", help="Generate sources.md")
@@ -64,6 +86,10 @@ def main():
         pdf2html.main(args)
     elif args.command == "fragment":
         fragment.main(args)
+    elif args.command == "link":
+        link.main(args)
+    elif args.command == "archive":
+        link.archive_main(args)
     elif args.command == "sources":
         render.main(args)
     elif args.command == "sync":

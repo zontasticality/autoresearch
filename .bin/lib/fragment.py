@@ -146,7 +146,8 @@ def find_quote_in_divs(
 
 
 def url_encode_text(text: str) -> str:
-    return urllib.parse.quote(text, safe="")
+    # `-` and `,` are text-directive syntax, so both must be percent-encoded.
+    return urllib.parse.quote(text, safe="").replace("-", "%2D")
 
 
 def make_text_fragment(raw_match: str) -> str:
@@ -215,6 +216,7 @@ def main(args):
     if pages_url:
         url = f"{pages_url}/{encoded_filename}#:~:{fragment}"
     else:
-        url = f"{encoded_filename}#:~:{fragment}"
+        # Keep the path as given (e.g. docs/X.html) so it works relative to report.md.
+        url = f"{urllib.parse.quote(html_file, safe='/')}#:~:{fragment}"
 
     print(url)

@@ -438,7 +438,87 @@ def _merge_html_filenames(sources_path: str, html_updates: dict):
         )
 
 
+def _convert(session_dir: str, docs_dir: str, rel_pdf: str, source: dict) -> str | None:
+    """Convert one PDF (path relative to session_dir) to docs/<stem>.html.
+
+    Runs pdf2htmlEX in podman and applies postprocess_html, which makes every
+    page visible and adds the metadata bar. Returns the HTML filename or None.
+    """
+    html_filename = os.path.splitext(os.path.basename(rel_pdf))[0] + ".html"
+    print(f"  Converting {rel_pdf}...")
+    result = subprocess.run(
+        [
+            "podman", "run", "--rm",
+            "-v", f"{session_dir}:/pdf:ro",
+            "-v", f"{docs_dir}:/out",
+            "bwits/pdf2htmlex",
+            "pdf2htmlEX", "--zoom", "1.3", "--dest-dir", "/out",
+            f"/pdf/{rel_pdf}",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        print(f"  Error converting {rel_pdf}: {result.stderr}", file=sys.stderr)
+        return None
+
+    html_path = os.path.join(docs_dir, html_filename)
+    print(f"  Post-processing {html_filename}...")
+    with open(html_path, "r") as f:
+        content = f.read()
+    content = postprocess_html(content, source)
+    with open(html_path, "w") as f:
+        f.write(content)
+    return html_filename
+
+
+def _topic_dir_of(path: str) -> str | None:
+    """The topics/<slug> directory containing path, if any."""
+    p = os.path.abspath(path)
+    topics = str(S.TOPICS_DIR)
+    while p != os.path.dirname(p):
+        if os.path.dirname(p) == topics:
+            return p
+        p = os.path.dirname(p)
+    return None
+
+
+def _main_files(files: list[str]):
+    """--file mode: convert specific PDFs (e.g. open-access ones) inside a topic."""
+    for f in files:
+        session_dir = _topic_dir_of(f)
+        if not session_dir:
+            print(f"Error: {f} is not inside a topic folder (hard-link it in first)", file=sys.stderr)
+            sys.exit(1)
+        rel = os.path.relpath(os.path.abspath(f), session_dir)
+        docs_dir = os.path.join(session_dir, "docs")
+        os.makedirs(docs_dir, exist_ok=True)
+
+        sources_path = os.path.join(session_dir, "sources.json")
+        source = {"title": os.path.splitext(os.path.basename(f))[0]}
+        match = None
+        if os.path.exists(sources_path):
+            for s in S.load_sources(sources_path).get("sources", []):
+                names = [(s.get("download") or {}).get("filename") or ""]
+                names += [x.strip() for x in str(s.get("local_file") or "").split(";")]
+                if os.path.basename(f) in {os.path.basename(n) for n in names if n}:
+                    match = s
+                    break
+        if match:
+            source = match
+        html_filename = _convert(session_dir, docs_dir, rel, source)
+        if not html_filename:
+            sys.exit(1)
+        if match:
+            _merge_html_filenames(sources_path, {_source_key(match): html_filename})
+        ensure_gitignore(session_dir)
+        print(f"  Done: docs/{html_filename}")
+
+
 def main(args):
+    if getattr(args, "files", None):
+        _main_files(args.files)
+        return
     force = args.force if hasattr(args, "force") else False
     session_dir = os.path.abspath(args.dir if hasattr(args, "dir") and args.dir else ".")
 
@@ -485,32 +565,8 @@ def main(args):
                 html_updates[_source_key(source)] = html_filename
                 continue
 
-        print(f"  Converting {filename}...")
-        result = subprocess.run(
-            [
-                "podman", "run", "--rm",
-                "-v", f"{session_dir}:/pdf:ro",
-                "-v", f"{docs_dir}:/out",
-                "bwits/pdf2htmlex",
-                "pdf2htmlEX", "--zoom", "1.3", "--dest-dir", "/out",
-                f"/pdf/{filename}",
-            ],
-            capture_output=True,
-            text=True,
-        )
-
-        if result.returncode != 0:
-            print(f"  Error converting {filename}: {result.stderr}", file=sys.stderr)
+        if not _convert(session_dir, docs_dir, filename, source):
             continue
-
-        print(f"  Post-processing {html_filename}...")
-        with open(html_path, "r") as f:
-            content = f.read()
-
-        content = postprocess_html(content, source)
-
-        with open(html_path, "w") as f:
-            f.write(content)
 
         source["html_filename"] = html_filename
         html_updates[_source_key(source)] = html_filename
