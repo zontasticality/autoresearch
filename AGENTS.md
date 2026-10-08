@@ -151,8 +151,16 @@ summary. Be paranoid about each link.
      tell the user.
    - After every attempt, append
      `date<TAB>book|article<TAB>md5-or-doi<TAB>filename<TAB>ok|failed`.
-   - Prefer EPUB for books. Move downloads out of `inbox/` immediately and
-     record `download.hash`.
+   - Prefer EPUB for books. Retail EPUBs often carry print page numbers
+     (`grep -c 'epub:type="pagebreak"'`), so you rarely need a PDF just for
+     page numbers. Move downloads out of `inbox/` immediately and record
+     `download.hash`.
+   - `book_search` scrapes Anna's HTML search, which sits behind DDoS-Guard
+     and returns nothing. Find MD5s in scry instead:
+     `books.catalog WHERE family = 'files' AND hasAllTokens(search_text_lc, tokens('<title author>'))`.
+     Then call `book_download(hash, …)`. Downloads use the JSON API on the
+     mirror set in `ANNAS_FIXED_BASE_URL` in `.mcp.json`; open-slum.org lists
+     live mirrors.
    - `article_download` sometimes saves a SciDB landing page (`.htm`, about
      170 KB) instead of the paper. Check with `file`; if so, delete it and
      log `failed`.
