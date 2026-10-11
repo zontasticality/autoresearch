@@ -90,6 +90,11 @@ def fetch(url: str, timeout: int = 60) -> tuple[int, str]:
         with open(path, encoding="utf-8", errors="replace") as f:
             return 200, f.read()
     code, text, _ = http(url, timeout=timeout)
+    for wait in (15, 30, 60):  # archives (esp. Wayback) rate-limit with 429
+        if code != 429:
+            break
+        time.sleep(wait)
+        code, text, _ = http(url, timeout=timeout)
     if code == 200 and text:
         with open(path, "w", encoding="utf-8") as f:
             f.write(text)
@@ -372,14 +377,16 @@ def check_file(md_path: str) -> int:
             bad += 1
             continue
         ntext = normalize(text)[0]
-        terms = _parse_directive(frag)
-        p = ntext.find(normalize(terms[0])[0])
-        ok = p >= 0
-        if ok and len(terms) > 1:
-            ok = ntext.find(normalize(terms[-1])[0], p) >= 0
-        if not ok:
-            print(f"NOT FOUND    {base}  {[t[:60] for t in terms]}")
-            bad += 1
+        # A link may carry several directives (#:~:text=A&text=B); check each.
+        for directive in frag.split("&text="):
+            terms = _parse_directive(directive)
+            p = ntext.find(normalize(terms[0])[0])
+            ok = p >= 0
+            if ok and len(terms) > 1:
+                ok = ntext.find(normalize(terms[-1])[0], p) >= 0
+            if not ok:
+                print(f"NOT FOUND    {base}  {[t[:60] for t in terms]}")
+                bad += 1
     print(f"{len(links)} fragment links checked, {bad} problems")
     return 1 if bad else 0
 
